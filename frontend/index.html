@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ResQ — Emergency help that adapts to you</title>
+<style>
+:root{--navy:#0B1F3A;--navy2:#16355F;--red:#D62839;--green:#17894F;--amber:#B87F00;--bg:#F3F6FA;--ink:#0B1F3A;--mut:#4A5B73;--card:#fff;--line:#D5DEEA;--fs:17px}
+body.hc{--bg:#fff;--line:#000;--mut:#000;--fs:21px}
+body.hc button{border-width:3px}
+body.reduce *{animation:none!important;transition:none!important}
+*{box-sizing:border-box}
+body{margin:0;font:var(--fs)/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+button{font:inherit;cursor:pointer;border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px 18px;min-height:52px}
+button:focus-visible,[tabindex]:focus-visible{outline:4px solid #2B7BFF;outline-offset:2px}
+button.p{background:var(--navy);color:#fff;border-color:var(--navy)}
+button.g{background:var(--green);color:#fff;border-color:var(--green)}
+button.r{background:var(--red);color:#fff;border-color:var(--red)}
+button.sel{border-color:var(--navy);background:#E6EEFA;font-weight:700}
+body.big button{min-height:68px;font-size:1.2em}
+#top{background:var(--navy);color:#fff;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#top b{font-size:1.3em;margin-right:auto}
+#top button{background:transparent;color:#fff;border-color:#5C7CA8;min-height:40px;padding:6px 12px;font-size:.85em}
+#top button.on{background:#fff;color:var(--navy)}
+main{max-width:460px;margin:0 auto;padding:16px}
+main.wide{max-width:1100px}main.mid{max-width:760px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+h1{font-size:1.6em;margin:.2em 0}h2{font-size:1.25em;margin:.2em 0}
+.mut{color:var(--mut)}.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+.pill{display:inline-block;padding:3px 12px;border-radius:99px;font-size:.8em;font-weight:700;color:#fff}
+.CRITICAL{background:var(--red)}.HIGH{background:#E5671B}.MEDIUM{background:var(--amber)}.LOW{background:var(--green)}
+.sim{display:inline-block;border:1.5px dashed var(--amber);color:var(--amber);font-size:.72em;font-weight:700;padding:2px 8px;border-radius:6px}
+#sos{width:230px;height:230px;border-radius:50%;background:var(--red);color:#fff;font-size:3em;font-weight:800;border:10px solid #F6B5BB;display:block;margin:18px auto;position:relative;overflow:hidden;touch-action:none}
+#sos i{position:absolute;left:0;bottom:0;width:100%;height:0;background:rgba(0,0,0,.28)}
+body.simple #sos{width:260px;height:260px}
+.nav{display:flex;gap:6px;position:sticky;bottom:0;background:var(--bg);padding:10px 0}.nav button{flex:1;padding:8px;font-size:.85em}
+.count{font-size:9em;font-weight:800;text-align:center;color:var(--red);line-height:1}
+.tl div{padding:8px 0 8px 34px;position:relative;color:var(--mut)}
+.tl div:before{content:"○";position:absolute;left:6px}
+.tl .d{color:var(--ink)}.tl .d:before{content:"✓";color:var(--green);font-weight:800}
+.tl .n{color:var(--ink);font-weight:700}.tl .n:before{content:"●";color:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.chain{display:flex;flex-direction:column;align-items:center;gap:4px}
+.node{padding:10px 16px;border:2px solid var(--line);border-radius:12px;background:#fff;font-weight:600;width:230px;text-align:center;transition:.4s}
+.node.on{border-color:var(--green);background:#E5F5EC}.node.me{border-color:var(--red)}
+.arr{color:var(--mut)}
+.bar{height:10px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--navy);transition:width .5s}
+.lock{font-size:3em;text-align:center;animation:pop .6s}@keyframes pop{from{transform:scale(.3);opacity:0}}
+.map{background:#E4ECF6;border-radius:14px;border:1px solid var(--line);width:100%}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}tbody tr{cursor:pointer}tbody tr:hover{background:#EEF3FA}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.big{font-size:2em;font-weight:800}
+.fuse circle{transition:all 1s}
+</style></head><body>
+<div id="top"><b>ResQ</b><span id="be" class="sim">backend: checking…</span>
+<button data-r="user">Person</button><button data-r="resp">Responder</button><button data-r="coord">Coordinator</button>
+<button id="auto">▶ Auto-play demo</button><button id="a11y" aria-pressed="false">Accessibility</button><button id="simp" aria-pressed="false">Simple mode</button><button id="off" aria-pressed="false">Simulate no internet</button>
+<a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer" style="color:#A0C4FF;text-decoration:none;font-size:.85em;padding:6px 12px;border:1px solid #5C7CA8;border-radius:10px;margin-left:auto">API Docs ↗</a>
+</div>
+<main id="app" aria-live="polite"></main>
+<script>
+const $=s=>document.querySelector(s);
+const OPTS={assist:["General","Child","Senior","Mobility assistance","Speech assistance","Hearing assistance","Vision assistance","Cognitive assistance"],trig:["Big SOS button","Voice command","Gesture","Wearable","Automatic detection"],comm:["Voice","Visual","Vibration","Combination"]};
+const urlRole = new URLSearchParams(window.location.search).get("role");
+let S={msgs:[],started:false,chat:false,auto:false,role:["user","resp","coord"].includes(urlRole)?urlRole:null,profile:JSON.parse(localStorage.getItem("resq.profile")||"null"),ob:{assist:"General",trig:"Big SOS button",comm:"Combination"},
+ phase:"idle",offline:false,a11y:false,simple:false,voice:false,tab:"home",cd:3,relay:0,steps:0,tri:0,eta:4,dist:.8,respStatus:"AVAILABLE",incId:"RQ-2026-10482",tmr:[],fusion:0,lang:"English",sub:null};
+const T=[];const later=(f,ms)=>{const t=setTimeout(f,ms);S.tmr.push(t)};
+const clearT=()=>{S.tmr.forEach(clearTimeout);S.tmr=[]};
+function speak(t){if(!S.voice||!window.speechSynthesis)return;try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t))}catch(e){}}
+function vib(){try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
+const sim=(t="PROTOTYPE SIMULATION")=>`<span class="sim">${t}</span>`;
+const INC=()=>({incident_id:S.incId,user_id:"demo-user-01",timestamp:new Date().toISOString(),latitude:13.0827,longitude:80.2707,approximate_location:"Within ~300 m, Chennai (demo)",incident_type:"Possible road accident",severity:"HIGH",confidence:.94,vulnerability_profile:S.profile?S.profile.assist:"General",trigger_type:S.profile?S.profile.trig:"Big SOS button",network_status:S.offline?"OFFLINE → relayed":"ONLINE",responder_status:S.phase==="idle"?"none":["accepted","travelling","arrived"].includes(S.phase)?S.phase:"alerting",official_service_status:"Notified (112 simulated)",ttl:24,hop_count:S.offline?3:0,status:S.phase});
+
+function setPhase(p){S.phase=p;render()}
+// ---------- SOS FLOW ----------
+function startSOS(){if(S.phase!=="idle")return;clearT();S.phase="countdown";S.cd=3;speak("Emergency alert starting. Say cancel to stop.");render();
+ const tick=()=>{if(S.phase!=="countdown")return;if(S.cd>1){S.cd--;render();later(tick,1000)}else{S.offline?startRelay():startSend()}};later(tick,1000)}
+function cancelSOS(){clearT();S.phase="idle";S.steps=0;render()}
+function startRelay(){S.phase="relay";S.relay=0;render();speak("No internet. Relaying your emergency through nearby devices.");
+ const n=()=>{S.relay++;render();if(S.relay<6)later(n,1100);else startSend()};later(n,900)}
+function startSend(){S.phase="send";S.steps=0;render();speak("ResQ is connecting you to help.");vib();
+ const n=()=>{S.steps++;render();if(S.steps<5)later(n,800);else{later(()=>{S.phase="triage";S.tri=0;render();fetchTri();const t=()=>{S.tri++;render();if(S.tri<4)later(t,900);else later(()=>{S.phase="fusion";S.fusion=0;render();later(()=>{S.fusion=1;render()},1200);later(()=>{S.phase="waiting";render()},4200)},1200)};later(t,900)},700)}};later(n,800)}
+function accept(){S.phase="accepted";S.respStatus="BUSY";render();speak("Help is on the way. Your responder is approximately four minutes away.");vib();
+ later(()=>{S.phase="travelling";S.eta=4;S.dist=.8;render();const m=()=>{if(S.phase!=="travelling")return;if(S.eta>1){S.eta--;S.dist=+(S.dist-.2).toFixed(1);render();later(m,2500)}};later(m,2500)},2200)}
+function arrived(){S.phase="arrived";S.eta=0;S.dist=0;render();speak("Help has arrived.");vib()}
+function reset(){fetch('/api/reset',{method:'POST'}).catch(()=>{});S.triRes=null;S.started=false;S.msgs=[];S.chat=false;clearT();S.phase="idle";S.steps=0;S.respStatus="AVAILABLE";S.eta=4;S.dist=.8;render()}
+
+// ---------- VIEWS ----------
+const tl=()=>{const p=S.phase,a=["waiting","accepted","travelling","arrived"];const acc=["accepted","travelling","arrived"].includes(p);
+ const L=[["SOS received","d"],["Incident verified","d"],["Nearby responders alerted","d"],["Responder accepted",acc?"d":"n"],["Responder travelling",p==="travelling"?"n":p==="arrived"?"d":""],["Arrived",p==="arrived"?"d":""]];
+ return`<div class="tl">${L.map(x=>`<div class="${x[1]}">${x[0]}</div>`).join("")}</div>`};
+function mapSvg(precise,showRoute){const prog=showRoute?(S.phase==="arrived"?1:(.8-S.dist)/.8):0;
+ const rx=60+(190-60)*prog,ry=40+(120-40)*prog;
+ return`<svg class="map" viewBox="0 0 300 180" role="img" aria-label="Map"><path d="M0 130 L300 60 M80 0 L140 180 M0 40 L300 150" stroke="#fff" stroke-width="9" fill="none"/>
+ ${precise?`<circle cx="190" cy="120" r="9" fill="#D62839"/><text x="150" y="146" font-size="10" fill="#0B1F3A">Precise: 13.0827, 80.2707 (demo)</text>`:`<circle cx="190" cy="120" r="55" fill="#D6283933" stroke="#D62839" stroke-dasharray="4"/><text x="132" y="124" font-size="10" fill="#0B1F3A">~300 m area</text>`}
+ ${showRoute?`<line x1="60" y1="40" x2="190" y2="120" stroke="#17894F" stroke-width="3" stroke-dasharray="6"/><circle cx="${rx}" cy="${ry}" r="8" fill="#17894F"/>`:""}</svg>`}
+
+function vUser(){const p=S.phase,P=S.phase;
+ if(!S.profile)return onboard();
+ if(P==="countdown")return`<div class="card" role="alert"><h1>Emergency alert starting...</h1><div class="count">${S.cd}</div><button class="p" style="width:100%" id="cancel">CANCEL</button></div>`;
+ if(P==="relay"){const r=S.relay;const N=["YOUR PHONE","NEARBY PHONE","RELAY PHONE","CONNECTED PHONE","RESQ SERVER"];
+  return`<div class="card"><h1 style="color:var(--red)">NO INTERNET CONNECTION</h1>${sim()}
+  <div class="chain" style="margin:14px 0">${N.map((n,i)=>`<div class="node ${i===0?"me":""} ${r>=i+1?"on":""}">${n}</div>${i<4?'<div class="arr">↓</div>':""}`).join("")}</div>
+  <p><b>SOS packet</b> · SOS ID: ${S.incId}<br>Hop count: ${Math.min(3,Math.max(0,r-1))} · TTL: 24</p>
+  <p><b>${r<3?"Searching for a connected device...":r<5?"Relay found":"Emergency delivered"}</b></p>
+  <p class="mut">ResQ can forward an emergency through nearby devices when direct internet connectivity is unavailable.</p></div>`}
+ if(P==="send"){const L=["Emergency detected","Location identified","Nearby responders notified","Official emergency channel notified","Finding the fastest available help"];
+  return`<div class="card"><h1>ResQ is connecting you to help...</h1><p class="mut">Incident ID: <b>${S.incId}</b></p><div class="tl">${L.map((x,i)=>`<div class="${S.steps>i?"d":S.steps===i?"n":""}">${x}</div>`).join("")}</div></div>`}
+ if(P==="triage"){const f=["Trigger: "+S.profile.trig,"Ability profile: "+S.profile.assist,"Motion & location risk: high-risk area","Time elapsed & people affected: 2"];
+  return`<div class="card"><h1>Understanding your emergency...</h1>${sim("AI TRIAGE · PROTOTYPE SIMULATION")}<div class="tl" style="margin:8px 0">${f.map((x,i)=>`<div class="${S.tri>i?"d":S.tri===i?"n":""}">${x}</div>`).join("")}</div>
+  ${S.tri>=4?triageCard():""}</div>`}
+ if(P==="fusion")return fusionCard();
+ if(P==="waiting")return`<div class="card"><h1>Help is on the way</h1>${tl()}<div class="card" style="background:#FFF6DD;border-color:var(--amber)"><b>🔒 Your location is being protected</b><br>Emergency within approximately 300 m. Exact location is shared only after a verified responder accepts.</div>${mapSvg(false,false)}<p class="mut">Searching for the nearest verified responder. Switch to <b>Responder</b> to accept.</p>${triageCard()}</div>`;
+ if(P==="accepted"||P==="travelling")return`<div class="card" ${P==="accepted"?'role="alert"':""}><h1>Help is on the way</h1>
+  ${P==="accepted"?`<div class="lock">🔓</div><h2 style="text-align:center">Responder accepted</h2><p style="text-align:center">Precise location shared securely.</p>`:`<div class="card" style="background:#E5F5EC;border-color:var(--green)"><h2>Arun — Verified Responder</h2><div class="row"><div><div class="big">${S.dist} km</div>Distance</div><div><div class="big">${S.eta} min</div>ETA</div></div><b>Travelling to you</b></div>${mapSvg(true,true)}`}
+  ${S.msgs.length?'<div class="card" style="border-color:var(--green)"><b>Message from responder:</b> '+S.msgs[S.msgs.length-1]+'</div>':''}${tl()}<div class="row"><div class="card"><b>VOICE</b><br><span class="mut">"Help is on the way. Your responder is approximately ${S.eta} minutes away."</span></div><div class="card"><b>VIBRATION</b><br><button id="vib">Simulate vibration ${sim("SIM")}</button></div></div></div>`;
+ if(P==="arrived")return`<div class="card" style="background:#E5F5EC;border-color:var(--green)" role="alert"><div class="lock">✅</div><h1 style="text-align:center">Help has arrived</h1>${tl()}<p><b>Incident ${S.incId} closed.</b></p><button class="p" style="width:100%" id="reset">Back to home</button></div>`;
+ if(S.sub==="voice")return voiceView();if(S.sub==="gest")return gestView();
+ if(S.tab==="status")return`<div class="card"><h2>My status</h2><p>Safety: <b style="color:var(--green)">Safe</b><br>Network: ${S.offline?"○ No internet":"● Connected"}<br>Mode: ${S.profile.assist}</p></div>`+nav();
+ if(S.tab==="safety")return`<div class="card"><h2>Safety</h2><p>Call <b>112</b> (India emergency number) directly any time.</p><p class="mut">Your location is only shared at ~300 m precision until a verified responder accepts.</p></div>`+nav();
+ if(S.tab==="prof")return`<div class="card"><h2>Profile</h2><p>Assistance: ${S.profile.assist}<br>Trigger: ${S.profile.trig}<br>Communication: ${S.profile.comm}</p><button id="redo">Change emergency mode</button></div>`+nav();
+ // home
+ if(S.simple)return`<div class="card" style="text-align:center"><h1>SOS</h1>${sosBtn()}<button class="r" style="width:100%;margin:8px 0" onclick="alert('Prototype: this would dial 112')">CALL 112</button><button style="width:100%;margin:8px 0" id="mystat">MY STATUS</button><button style="width:100%" id="cancel0">CANCEL</button><p id="msg"></p></div>`;
+ return`<div class="card"><h1>You're protected with ResQ</h1>
+  <p>Safety: <b style="color:var(--green)">Safe</b> · Network: <b>${S.offline?"○ No internet":"● Connected"}</b><br>Verified responders nearby: <b>${S.offline?"relay only":"6"}</b> · Mode: <b>${S.profile.assist}</b></p>
+  ${sosBtn()}<p style="text-align:center;margin:0"><b>Press and hold for emergency</b><br><span class="mut">or press Enter / Space</span></p>
+  <div class="row" style="margin-top:12px"><button id="voice">🎙 Use Voice</button><button id="gest">✋ Use Gesture</button></div></div>`+nav()}
+const sosBtn=()=>`<button id="sos" aria-label="SOS. Press and hold for emergency">SOS<i></i></button>`;
+const nav=()=>`<div class="nav">${[["home","Home"],["status","Status"],["safety","Safety"],["prof","Profile"]].map(x=>`<button data-t="${x[0]}" class="${S.tab===x[0]?"sel":""}">${x[1]}</button>`).join("")}</div>`;
+function onboard(){const g=(k,l)=>`<h2>${l}</h2><div class="row">${OPTS[k].map(o=>`<button class="${S.ob[k]===o?"sel":""}" data-ob="${k}" data-v="${o}">${o}</button>`).join("")}</div>`;
+ return`<div class="card"><h1>Let's make ResQ work for you.</h1><p class="mut">ResQ asks a few questions once and adapts emergency activation and communication to your needs.</p>${g("assist","Assistance preference")}${g("trig","Emergency trigger")}${g("comm","Communication preference")}<button class="p" style="width:100%;margin-top:16px" id="obdone">Save and continue</button></div>`}
+function triageCard(){return`<div class="card" style="background:#F3F6FA"><h2>AI triage ${sim("SIM")}</h2><div class="row"><div>Type<br><b>Accident</b></div><div>Severity<br><span class="pill HIGH">HIGH</span></div><div>Confidence<br><b>94%</b></div><div>Priority<br><b>91/100</b></div></div>
+ <p>High priority because the user requires accessibility assistance (${S.profile?S.profile.assist:"General"}) and the incident is in a potentially high-risk area.</p><p><b>AI recommendation — responder rules override AI.</b></p></div>`}
+function fusionCard(){const f=S.fusion;const pts=f?[[150,70],[155,75],[148,78]]:[[70,40],[230,60],[110,140]];
+ return`<div class="card"><h1>Incident Fusion</h1>${sim()}<svg class="map fuse" viewBox="0 0 300 180">${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${f?7:10}" fill="${["#D62839","#E5671B","#17894F"][i]}"/>`).join("")}${f?`<circle cx="151" cy="74" r="30" fill="none" stroke="#0B1F3A" stroke-width="3"/>`:""}</svg>
+ <div class="tl"><div class="d">Report A — Person reports accident</div><div class="d">Report B — Nearby user reports crash</div><div class="d">Report C — Responder reports injured person</div></div>
+ <h2>${f?"3 reports → 1 incident":"3 REPORTS ↓ INCIDENT FUSION"}</h2>
+ ${f?`<p><b>${S.incId}</b> · Possible road accident · Reports: 3 · Confidence: 96% · Affected people: 2 · <span class="pill HIGH">HIGH</span></p>`:`<p class="mut">Matching time, area and description…</p>`}</div>`}
+function voiceView(){return`<div class="card"><h1>Voice SOS</h1>${sim("PROTOTYPE VOICE SIMULATION")}<p>Language:</p><div class="row">${["English","Tamil","Hindi"].map(l=>`<button class="${S.lang===l?"sel":""}" data-lang="${l}">${l}</button>`).join("")}</div>
+ <h2 id="vstat">Listening...</h2><p id="vtxt" class="mut"></p><div class="row"><button class="p" id="vgo">Simulate phrase</button><button id="vback">Back</button></div></div>`}
+function gestView(){return`<div class="card"><h1>Gesture SOS</h1>${sim()}<p style="font-size:4em;text-align:center">✋</p><p>Raise your hand to trigger emergency.</p><div class="row"><button class="p" id="ggo">Simulate Gesture Detected</button><button id="vback">Back</button></div></div>`}
+
+function vResp(){const inc=["waiting","accepted","travelling","arrived"].includes(S.phase);const acc=["accepted","travelling","arrived"].includes(S.phase);
+ let h=`<div class="card"><h1>Responder Mode</h1><b>Arun Kumar</b> · Verified Responder<div class="row" style="margin-top:8px">${["AVAILABLE","BUSY","OFFLINE"].map(s=>`<button class="${S.respStatus===s?"sel":""}" data-rs="${s}">${s}</button>`).join("")}</div></div>`;
+ if(!inc)return h+`<div class="card"><p class="mut">No nearby emergencies. Trigger an SOS in <b>Person</b> mode and return here.</p></div>`;
+ h+=`<div class="card" style="border:3px solid var(--red)"><span class="pill HIGH">HIGH PRIORITY</span><h2>${S.incId}</h2><p>Possible accident · Distance: 0.8 km<br>User: <b>Accessibility assistance required</b> (${S.profile?S.profile.assist:"General"})<br>${acc?"Precise location released after acceptance.":"Initial location: Within 300 m"}</p>`;
+ if(!acc)h+=`${mapSvg(false,false)}<div class="row" style="margin-top:10px"><button class="g" id="acc">ACCEPT INCIDENT</button><button id="dec">DECLINE</button></div>`;
+ else h+=`<div class="lock">🔓</div>${mapSvg(true,true)}<p><b>ETA ${S.eta} min</b> · ${S.dist} km</p><div class="row"><button class="p" id="start">START RESPONSE</button><button class="g" id="arr">ARRIVED</button><button id="contact">CONTACT USER</button></div>${S.started?'<p><b>✓ Response started. En route.</b></p>':''}${S.chat?chatPanel():''}`;
+ return h+`</div>`}
+
+const INCS=[["RQ-10482","Accident","HIGH","Chennai","Arun","4 min","Responding",[150,95]],["RQ-10483","Medical","CRITICAL","Chennai","Priya","2 min","Responding",[90,60]],["RQ-10484","Lost Person","MEDIUM","Chennai","Unassigned","--","Searching",[230,50]],["RQ-10485","Fire","HIGH","Chennai","Karthik","6 min","Responding",[240,130]],["RQ-10486","Harassment","MEDIUM","Chennai","Unassigned","--","Searching",[60,140]],["RQ-10487","Medical","LOW","Chennai","Meena","3 min","Responding",[190,40]],["RQ-10488","Accident","CRITICAL","Chennai","Ravi","5 min","Responding",[120,120]]];
+function vCoord(){const live=S.phase!=="idle";const rows=INCS.map(r=>{let x=[...r];if(r[0]==="RQ-10482"&&live){x[6]=S.phase==="arrived"?"Closed":S.phase==="waiting"?"Searching":"Responding";x[4]=S.phase==="waiting"?"Unassigned":"Arun";x[5]=S.phase==="arrived"?"--":S.phase==="waiting"?"--":S.eta+" min"}return x});
+ const sel=rows.find(r=>r[0]===S.sub)||null;
+ return`<h1>ResQ Emergency Operations</h1><div class="grid4"><div class="card"><div class="big">7</div>ACTIVE INCIDENTS</div><div class="card"><div class="big" style="color:var(--red)">2</div>CRITICAL</div><div class="card"><div class="big">18</div>RESPONDERS AVAILABLE</div><div class="card"><div class="big">4m 32s</div>AVERAGE RESPONSE TIME</div></div>
+ <div class="row" style="align-items:flex-start"><div class="card" style="flex:1.3"><svg class="map" viewBox="0 0 300 180"><path d="M0 130 L300 60 M80 0 L140 180 M0 40 L300 150" stroke="#fff" stroke-width="9" fill="none"/>${rows.map(r=>`<circle cx="${r[7][0]}" cy="${r[7][1]}" r="${r[0]==="RQ-10482"?10:8}" fill="${{CRITICAL:"#D62839",HIGH:"#E5671B",MEDIUM:"#B87F00",LOW:"#17894F"}[r[2]]}" stroke="#fff" stroke-width="2"/>`).join("")}</svg><p class="mut">Fictional demo incidents · ${sim("SIM")}</p></div>
+ <div class="card" style="flex:1"><h2>Incident panel</h2>${sel?`<p><b>${sel[0]}</b> · ${sel[1]}<br>Severity: <span class="pill ${sel[2]}">${sel[2]}</span><br>Responder: ${sel[4]} · ETA ${sel[5]}<br>Status: ${sel[6]}</p>${sel[0]==="RQ-10482"&&live?`<pre style="white-space:pre-wrap;font-size:.7em;background:#F3F6FA;padding:8px;border-radius:8px">${JSON.stringify(INC(),null,1)}</pre>`:""}`:`<p class="mut">Select an incident row.</p>`}</div></div>
+ <div class="card" style="overflow:auto"><table><thead><tr><th>Incident ID</th><th>Type</th><th>Severity</th><th>Location</th><th>Responder</th><th>ETA</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr data-i="${r[0]}"><td>${r[0]}</td><td>${r[1]}</td><td><span class="pill ${r[2]}">${r[2]}</span></td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td></tr>`).join("")}</tbody></table></div>`}
+function vRole(){return`<div class="card"><h1>How are you using ResQ?</h1><p class="mut">Emergency help that adapts to you.</p><div style="display:grid;gap:12px"><button class="p" data-r="user">Person in Emergency</button><button class="p" data-r="resp">Verified Responder</button><button class="p" data-r="coord">Emergency Coordinator</button></div><p class="mut" style="margin-top:14px">Demo tip: open Person, press SOS, then switch to Responder and accept. ${sim("Prototype — all data simulated")}</p></div>`}
+
+function render(){
+ document.body.classList.toggle("hc",S.a11y);document.body.classList.toggle("big",S.a11y);document.body.classList.toggle("reduce",S.a11y);document.body.classList.toggle("simple",S.simple);
+ document.querySelectorAll("#top [data-r]").forEach(b=>b.classList.toggle("on",b.dataset.r===S.role));
+ $("#a11y").classList.toggle("on",S.a11y);$("#simp").classList.toggle("on",S.simple);$("#off").classList.toggle("on",S.offline);
+ $("#a11y").setAttribute("aria-pressed",S.a11y);$("#simp").setAttribute("aria-pressed",S.simple);$("#off").setAttribute("aria-pressed",S.offline);
+ const m=$("#app");m.className=S.role==="coord"?"wide":S.role==="resp"?"mid":"";
+ m.innerHTML=S.role==="user"?vUser():S.role==="resp"?vResp():S.role==="coord"?vCoord():vRole();bind()}
+function bind(){const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};
+ document.querySelectorAll("[data-r]").forEach(b=>{if(b.closest("#app"))b.onclick=()=>setRole(b.dataset.r)});
+ on("#cancel",cancelSOS);on("#cancel0",()=>{$("#msg").textContent="Nothing to cancel."});on("#mystat",()=>{$("#msg").textContent="You are safe. Network: "+(S.offline?"No internet":"Connected")});
+ on("#reset",reset);on("#acc",accept);on("#arr",arrived);on("#dec",()=>alert("Declined — would be re-routed to the next responder (prototype)."));
+ on("#vib",()=>{vib();document.body.animate([{background:"#fff"},{background:"#cfe"},{background:""}],400)});
+ on("#voice",()=>{S.sub="voice";render()});on("#gest",()=>{S.sub="gest";render()});on("#vback",()=>{S.sub=null;render()});
+ on("#redo",()=>{S.profile=null;render()});
+ on("#ggo",()=>{S.sub=null;startSOS()});
+ on("#vgo",()=>{const t={English:"Help me, I need assistance",Tamil:"உதவி வேண்டும் (simulated)",Hindi:"मुझे मदद चाहिए (simulated)"}[S.lang];$("#vtxt").textContent="“"+t+"”";$("#vstat").textContent="Voice command recognized — emergency activation requested.";later(()=>{S.sub=null;startSOS()},1400)});
+ document.querySelectorAll("[data-lang]").forEach(b=>b.onclick=()=>{S.lang=b.dataset.lang;render()});
+ document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;render()});
+ document.querySelectorAll("[data-ob]").forEach(b=>b.onclick=()=>{S.ob[b.dataset.ob]=b.dataset.v;render()});
+ document.querySelectorAll("[data-rs]").forEach(b=>b.onclick=()=>{S.respStatus=b.dataset.rs;render()});
+ document.querySelectorAll("tr[data-i]").forEach(r=>r.onclick=()=>{S.sub=r.dataset.i;render()});
+ on("#obdone",()=>{S.profile={...S.ob};localStorage.setItem("resq.profile",JSON.stringify(S.profile));S.voice=S.profile.comm!=="Visual"&&S.profile.comm!=="Vibration";render();
+   $("#app").insertAdjacentHTML("afterbegin",`<div class="card" style="background:#E5F5EC"><h2>Your emergency mode is ready.</h2></div>`);setTimeout(()=>render(),1800)});
+ const sos=$("#sos");if(sos){let h=null,st=0;const fill=sos.querySelector("i");
+  const go=()=>{st=Date.now();h=setInterval(()=>{const p=Math.min(1,(Date.now()-st)/1000);fill.style.height=p*100+"%";if(p>=1){clearInterval(h);h=null;startSOS()}},30)};
+  const stop=()=>{if(h){clearInterval(h);h=null;fill.style.height=0}};
+  sos.onpointerdown=go;sos.onpointerup=sos.onpointerleave=stop;sos.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();startSOS()}}}}
+function setRole(r){S.role=r;S.sub=null;const u=new URL(window.location);if(S.role)u.searchParams.set("role",S.role);else u.searchParams.delete("role");window.history.replaceState({},"",u);render()}
+document.querySelectorAll("#top [data-r]").forEach(b=>b.onclick=()=>setRole(b.dataset.r));
+$("#a11y").onclick=()=>{S.a11y=!S.a11y;if(S.a11y)S.voice=true;render()};
+$("#simp").onclick=()=>{S.simple=!S.simple;render()};
+$("#off").onclick=()=>{S.offline=!S.offline;render()};
+render();
+/* ---- backend sync layer: falls back to standalone mode if the API is down ---- */
+let ver=0,lastJ="",api=false;
+const KEYS=["phase","offline","eta","dist","respStatus","profile","incId","started","msgs"];
+const snap=()=>JSON.stringify(KEYS.map(k=>S[k]));
+const _render=render;
+render=function(){_render();push()};
+function badge(ok){api=ok;const b=$("#be");if(b){b.textContent=ok?"backend: connected":"backend: offline (standalone)";b.style.color=ok?"#9be8b8":"#ffd27a"}}
+async function push(){if(!api||snap()===lastJ)return;lastJ=snap();
+ try{const r=await fetch("/api/state",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({data:Object.fromEntries(KEYS.map(k=>[k,S[k]]))})});ver=(await r.json()).version}catch(e){badge(false)}}
+async function poll(){try{const j=await (await fetch("/api/state")).json();badge(true);
+ if(j.version!==ver){ver=j.version;if(j.data.phase==="idle"&&S.phase!=="idle")clearT();Object.assign(S,j.data);lastJ=snap();_render()}}catch(e){badge(false)}}
+async function fetchTri(){try{const assist=(S.profile&&S.profile.assist)||S.ob.assist||"General";const trig=(S.profile&&S.profile.trig)||S.ob.trig||"Big SOS button";const r=await fetch("/api/triage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({assist,trig,offline:S.offline})});if(r.ok){S.triRes=await r.json();render()}}catch(e){}}
+function triageCard(){const R=S.triRes||{label:"Possible road accident",severity:"HIGH",confidence:.94,priority:91,explanation:["High priority because the user requires accessibility assistance and the incident is in a potentially high-risk area."],disclaimer:"AI recommendation — responder rules override AI."};
+ return`<div class="card" style="background:#F3F6FA"><h2>AI triage ${sim("SIM · "+(S.triRes?"backend rules":"local"))}</h2><div class="row"><div>Type<br><b>${R.label}</b></div><div>Severity<br><span class="pill ${R.severity}">${R.severity}</span></div><div>Confidence<br><b>${Math.round(R.confidence*100)}%</b></div><div>Priority<br><b>${R.priority}/100</b></div></div><ul>${R.explanation.map(x=>`<li>${x}</li>`).join("")}</ul><p><b>${R.disclaimer}</b></p></div>`}
+setInterval(poll,800);poll();
+/* ---- v2: working Start Response / Contact User + auto-play demo ---- */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitFor(f){while(!f())await sleep(200)}
+function cap(t){let c=$("#cap");if(!c){c=document.createElement("div");c.id="cap";c.setAttribute("role","status");c.style.cssText="position:fixed;left:0;right:0;bottom:0;background:#0B1F3A;color:#fff;padding:16px;text-align:center;font-weight:700;z-index:9";document.body.append(c)}c.textContent=t;c.style.display=t?"block":"none"}
+function chatPanel(){return`<div class="card" style="background:#F3F6FA"><b>Secure channel ${sim("SIM")}</b><div>${S.msgs.map(m=>`<p>💬 ${m}</p>`).join("")||'<p class="mut">No messages yet.</p>'}</div><div class="row">${["I am on my way","Stay where you are","Tap the screen if you can hear me"].map(m=>`<button data-m="${m}">${m}</button>`).join("")}</div></div>`}
+function bindX(){const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};
+ on("#start",()=>{S.started=true;render()});on("#contact",()=>{S.chat=!S.chat;render()});
+ document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{S.msgs=[...S.msgs,b.dataset.m];render()})}
+async function auto(){if(S.auto)return;S.auto=true;reset();S.offline=true;S.profile=S.profile||{...S.ob};setRole("user");S.tab="home";render();
+ cap("1. A person needs help. SOS adapts to their ability profile.");await sleep(3000);
+ cap("2. SOS activated. Countdown lets them cancel.");startSOS();
+ await waitFor(()=>S.phase==="relay");cap("3. No internet. The SOS hops through nearby phones (simulation).");
+ await waitFor(()=>S.phase==="send");cap("4. Emergency delivered. ResQ is connecting to help.");
+ await waitFor(()=>S.phase==="triage");cap("5. AI triage. A recommendation only: responder rules override AI.");
+ await waitFor(()=>S.phase==="fusion");cap("6. Incident fusion. 3 reports become 1 verified incident.");
+ await waitFor(()=>S.phase==="waiting");cap("7. Location stays protected (about 300 m) until a responder accepts.");await sleep(4000);
+ setRole("resp");cap("8. A verified responder sees the incident and accepts.");await sleep(3500);accept();
+ cap("9. Accepted. Precise location is released securely.");await waitFor(()=>S.phase==="travelling");
+ setRole("user");cap("10. Live ETA: where is my help?");await sleep(7000);
+ arrived();cap("11. Help has arrived. Incident closed.");await sleep(4500);cap("");S.offline=false;S.auto=false;render()}
+const _r2=render;render=function(){_r2();bindX()};
+$("#auto").onclick=auto;render();
+
+</script></body></html>
